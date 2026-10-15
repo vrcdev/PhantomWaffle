@@ -1,22 +1,45 @@
 local env = getrenv()
-local req = env.shared and env.shared.require
-if not req then return end
 local ws = game:GetService('Workspace')
 local Players = game:GetService('Players')
 local lp = Players.LocalPlayer
 
-local okN, networkClient = pcall(req, 'NetworkClient')
-local okR, replicationInterface = pcall(req, 'ReplicationInterface')
-local okW, weaponController = pcall(req, 'WeaponControllerInterface')
-if not (okN and okR) then
-	print('[pf] module fail: net=' .. tostring(okN) .. ' repl=' .. tostring(okR))
+local networkClient, replicationInterface, weaponController
+
+local req = env.shared and env.shared.require
+if req then
+	pcall(function() networkClient = req('NetworkClient') end)
+	pcall(function() replicationInterface = req('ReplicationInterface') end)
+	pcall(function() weaponController = req('WeaponControllerInterface') end)
+end
+
+if not (networkClient and replicationInterface) and getgc then
+	for _, v in next, getgc(true) do
+		if type(v) == 'table' then
+			if not networkClient and rawget(v, 'send') and rawget(v, 'getTime') then
+				networkClient = v
+			end
+			if not replicationInterface and rawget(v, 'operateOnAllEntries') then
+				replicationInterface = v
+			end
+			if not weaponController and rawget(v, 'getController') and rawget(v, 'getActiveWeaponController') == nil then
+				if pcall(function() return v.getController() end) then
+					weaponController = v
+				end
+			end
+		end
+	end
+end
+
+if not (networkClient and replicationInterface) then
+	print('[pf] module fail: net=' .. tostring(networkClient ~= nil) .. ' repl=' .. tostring(replicationInterface ~= nil))
 	return
 end
 
 local gravity = Vector3.yAxis * ws.Gravity
 
 local function bulletSpeed()
-	local ok, c = pcall(weaponController.getController)
+	if not weaponController then return 2000 end
+	local ok, c = pcall(function() return weaponController.getController() end)
 	if not ok or not c then return 2000 end
 	local ok2, w = pcall(function() return c:getActiveWeapon() end)
 	if not ok2 or not w then return 2000 end
@@ -50,6 +73,9 @@ env._G.__pfUnhook = function() networkClient.send = oldSend end
 
 networkClient.send = function(self, name, ...)
 	local args = {...}
+	if name == 'falldamage' and ws:GetAttribute('pf_nofall') then
+		return
+	end
 	if name == 'newbullets' and ws:GetAttribute('pf_on') then
 		local tPos = ws:GetAttribute('pf_t')
 		local tName = ws:GetAttribute('pf_tname')
@@ -61,8 +87,11 @@ networkClient.send = function(self, name, ...)
 				if type(data) == 'table' and type(data.bullets) == 'table' and typeof(data.firepos) == 'Vector3' then
 					local spd = bulletSpeed()
 					for _, b in ipairs(data.bullets) do
-						if typeof(b[1]) == 'Vector3' then
-							b[1] = getTrajectory(tPos - data.firepos, spd)
+						local traj = getTrajectory(tPos - data.firepos, spd)
+						if type(b[1]) == 'table' then
+							if typeof(b[1].unit) == 'Vector3' then b[1].unit = traj end
+						elseif typeof(b[1]) == 'Vector3' then
+							b[1] = traj
 						end
 					end
 					oldSend(self, name, uniqueID, data, fireTime)
@@ -71,6 +100,7 @@ networkClient.send = function(self, name, ...)
 						for _, b in ipairs(data.bullets) do
 							pcall(oldSend, self, 'bullethit', uniqueID, entry._player, tPos, bone, b[2], fireTime)
 						end
+						ws:SetAttribute('pf_hits', (ws:GetAttribute('pf_hits') or 0) + 1)
 					end
 					return
 				end

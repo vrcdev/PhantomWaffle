@@ -18,6 +18,15 @@ local function fetch(path)
 	return nil
 end
 
+local libSrc = fetch("abyss_lib.lua")
+if libSrc then
+	local f, e = loadstring(libSrc)
+	if f then pcall(f) else warn("[pf] lib compile:", e) end
+else
+	warn("[pf] lib fetch failed")
+	return
+end
+
 local actorSrc = fetch("pf_actor.luau")
 if actorSrc then
 	for _, t in ipairs(getactorthreads()) do
