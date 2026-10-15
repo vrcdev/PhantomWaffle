@@ -4264,6 +4264,18 @@ Utility.AddConnection(RunService.Heartbeat, function()
     end
 end)
 --
+local __lastVisible = Library.WindowVisible
+Utility.AddConnection(RunService.Heartbeat, function()
+    if Library.WindowVisible ~= __lastVisible then
+        __lastVisible = Library.WindowVisible
+        if not Library.WindowVisible then
+            pcall(function()
+                UserInput.MouseBehavior = Enum.MouseBehavior.LockCenter
+            end)
+        end
+    end
+end)
+--
 local Maid = {
     Connections = {}
 }

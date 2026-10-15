@@ -37,10 +37,23 @@ local function flag(name, default)
 end
 local CFG = {FOV = 220, Smooth = 0.3, WallCheck = true, AimPart = "h", Chance = 100}
 
-local PF_PARTS = {"h", "c", "la", "ra", "ll", "rl"}
 local PF_SKEL = {{"h","c"},{"c","la"},{"c","ra"},{"c","ll"},{"c","rl"}}
 local BONE_ATTR = {h = "Head", c = "Torso", la = "Left Arm", ra = "Right Arm", ll = "Left Leg", rl = "Right Leg"}
 local BONE_UI = {Head = "h", Torso = "c"}
+
+local wsPlayers = nil
+task.spawn(function() wsPlayers = ws:WaitForChild("Players", 10) end)
+local function liveParts(name)
+	if not wsPlayers then return nil end
+	local model = wsPlayers:FindFirstChild(name)
+	if not model then return nil end
+	local out = {}
+	for k, n in pairs(BONE_ATTR) do
+		local p = model:FindFirstChild(n, true)
+		if p and p:IsA("BasePart") then out[k] = p.Position end
+	end
+	return out.c and out or nil
+end
 
 local ents = {}
 local function scanEnts()
@@ -245,15 +258,36 @@ end)
 run.RenderStepped:Connect(function(dt)
 	if PF_DEAD then return end
 	local alpha = math.clamp(dt * 14, 0, 1)
-	for name, ent in pairs(ents) do
-		local e = espPool[name]
-		if not e then e = makeESP() e.rp = {} espPool[name] = e end
-		local rp = e.rp
-		for k, pos in pairs(ent.parts) do
-			local cur = rp[k]
-			rp[k] = cur and cur:Lerp(pos, alpha) or pos
+	local drawn = {}
+	if wsPlayers then
+		for _, model in ipairs(wsPlayers:GetChildren()) do
+			local name = model.Name
+			drawn[name] = true
+			local ent = ents[name]
+			if not ent then
+				local plr = players:FindFirstChild(name)
+				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr and plr.Team and plr.Team.Name or ''}
+				ents[name] = ent
+			end
+			local live = liveParts(name)
+			if live then ent.parts = live end
+			local e = espPool[name]
+			if not e then e = makeESP() e.rp = {} espPool[name] = e end
+			e.rp = ent.parts
+			pcall(updateESP, e, ent)
 		end
-		pcall(updateESP, e, ent)
+	end
+	for name, ent in pairs(ents) do
+		if not drawn[name] then
+			local e = espPool[name]
+			if not e then e = makeESP() e.rp = {} espPool[name] = e end
+			local rp = e.rp
+			for k, pos in pairs(ent.parts) do
+				local cur = rp[k]
+				rp[k] = cur and cur:Lerp(pos, alpha) or pos
+			end
+			pcall(updateESP, e, ent)
+		end
 	end
 	for name, e in pairs(espPool) do
 		if not ents[name] then
