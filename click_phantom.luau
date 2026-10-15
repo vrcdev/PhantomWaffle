@@ -192,7 +192,7 @@ local function pickTarget()
 				if on then
 					local d = (sp - mPos).Magnitude
 					if d < bestScore then
-						if flag("wallbang", true) or not CFG.WallCheck or rayVisible(cam.CFrame.Position, pp) then
+						if flag("wallbang", false) or not CFG.WallCheck or rayVisible(cam.CFrame.Position, pp) then
 							best, bestScore = ent, d
 						end
 					end
@@ -286,7 +286,7 @@ aimSec:Dropdown({Title = "bone", Flag = "aim_part", List = {"Head", "Torso"}, De
 aimSec:Slider({Title = "hit chance", Flag = "aim_chance", Min = 10, Max = 100, Default = 100, Decimals = 0, Callback = function(v) CFG.Chance = v end})
 aimSec:Toggle({Title = "show fov", Flag = "aim_showfov", Default = true})
 aimSec:Toggle({Title = "wall check", Flag = "wall_check", Default = true, Callback = function(v) CFG.WallCheck = v end})
-aimSec:Toggle({Title = "wallbang", Flag = "wallbang", Default = true})
+aimSec:Toggle({Title = "wallbang", Flag = "wallbang", Default = false})
 
 local camSec = combat:Section("camera aim", "Right")
 camSec:Toggle({Title = "enabled", Flag = "cam_aim", Default = false})
