@@ -113,17 +113,18 @@ local function updateESP(e, ent)
 		for _, l in ipairs(e.skel) do l.Visible = false end
 	end
 	if not e or PF_DEAD or not camera then return end
-	local show = flag("esp_master", true) and ent.alive and not ent.mine and ent.parts.c
+	local parts = e.rp or ent.parts
+	local show = flag("esp_master", true) and ent.alive and not ent.mine and parts.c
 	if not show then hideAll() return end
 	local isEn = not flag("team_check", true) or ent.team ~= myTeam or myTeam == nil
 	local col = isEn and colEnemy or colFriend
 
-	local cPos = ent.parts.c
+	local cPos = parts.c
 	local camDist = (camera.CFrame.Position - cPos).Magnitude
 	if camDist < 4 then hideAll() return end
 	local rootPos, onScreen, depth = w2s(cPos)
 	local behind = depth < 0
-	local headPos = ent.parts.h or cPos + Vector3.new(0, 1.6, 0)
+	local headPos = parts.h or cPos + Vector3.new(0, 1.6, 0)
 	local top = w2s(headPos + Vector3.new(0, 0.6, 0))
 	local bottom = w2s(cPos - Vector3.new(0, 2.6, 0))
 	local height = math.abs(top.Y - bottom.Y)
@@ -169,7 +170,7 @@ local function updateESP(e, ent)
 	if flag("esp_skel", true) then
 		for i, pair in ipairs(PF_SKEL) do
 			local l = e.skel[i]
-			local a, b = ent.parts[pair[1]], ent.parts[pair[2]]
+			local a, b = parts[pair[1]], parts[pair[2]]
 			if l and a and b then
 				local sa, ona = w2s(a)
 				local sb, onb = w2s(b)
@@ -241,11 +242,17 @@ task.spawn(function()
 	end
 end)
 
-run.RenderStepped:Connect(function()
+run.RenderStepped:Connect(function(dt)
 	if PF_DEAD then return end
+	local alpha = math.clamp(dt * 14, 0, 1)
 	for name, ent in pairs(ents) do
 		local e = espPool[name]
-		if not e then e = makeESP() espPool[name] = e end
+		if not e then e = makeESP() e.rp = {} espPool[name] = e end
+		local rp = e.rp
+		for k, pos in pairs(ent.parts) do
+			local cur = rp[k]
+			rp[k] = cur and cur:Lerp(pos, alpha) or pos
+		end
 		pcall(updateESP, e, ent)
 	end
 	for name, e in pairs(espPool) do

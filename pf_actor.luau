@@ -152,7 +152,7 @@ task.spawn(function()
 			end
 		end
 		seen = now
-		task.wait(0.3)
+		task.wait(0.12)
 	end
 end)
 print('[pf] actor mirror running')
