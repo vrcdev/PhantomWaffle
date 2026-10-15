@@ -356,9 +356,8 @@ local function loadCfg()
 		colFriend = flag("col_friend", colFriend)
 	end)
 end
-cfgSec:Button({Title = "save config", Callback = saveCfg})
-cfgSec:Button({Title = "load config", Callback = loadCfg})
-cfgSec:Button({Title = "unload", Callback = function()
+local function pfUnload()
+	if PF_DEAD then return end
 	PF_DEAD = true
 	ws:SetAttribute("pf_on", false)
 	ws:SetAttribute("pf_t", nil)
@@ -372,7 +371,16 @@ cfgSec:Button({Title = "unload", Callback = function()
 	table.clear(espPool)
 	pcall(function() fovCircle:Remove() end)
 	pcall(function() Library.SelfDestruct() end)
-end})
+end
+PF_G.__pfUnload = pfUnload
+
+cfgSec:Button({Title = "save config", Callback = saveCfg})
+cfgSec:Button({Title = "load config", Callback = loadCfg})
+cfgSec:Button({Title = "unload", Callback = pfUnload})
+
+uis.InputBegan:Connect(function(input, gpe)
+	if input.KeyCode == Enum.KeyCode.End then pfUnload() end
+end)
 
 Window:AddSettingsTab()
 Window:SwitchTab(combat)
