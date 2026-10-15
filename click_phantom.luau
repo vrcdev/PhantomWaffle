@@ -214,7 +214,7 @@ end
 local function pickTarget()
 	local mPos = uis:GetMouseLocation()
 	local cam = ws.CurrentCamera
-	local best, bestScore = nil, CFG.FOV
+	local best, bestScore = nil, flag("aim_fov", CFG.FOV)
 	for _, ent in pairs(ents) do
 		if ent.alive and not ent.mine and (not flag("team_check", true) or ent.team ~= myTeam or myTeam == nil) then
 			local pp = ent.parts[CFG.AimPart] or ent.parts.h or ent.parts.c
@@ -258,6 +258,7 @@ end)
 run.RenderStepped:Connect(function(dt)
 	if PF_DEAD then return end
 	local alpha = math.clamp(dt * 14, 0, 1)
+	local now = os.clock()
 	local drawn = {}
 	if wsPlayers then
 		for _, model in ipairs(wsPlayers:GetChildren()) do
@@ -272,8 +273,22 @@ run.RenderStepped:Connect(function(dt)
 			local live = liveParts(name)
 			if live then ent.parts = live end
 			local e = espPool[name]
-			if not e then e = makeESP() e.rp = {} espPool[name] = e end
-			e.rp = ent.parts
+			if not e then e = makeESP() e.rp = {} e.trk = {} espPool[name] = e end
+			if not e.trk then e.trk = {} end
+			for k, pos in pairs(ent.parts) do
+				local tk = e.trk[k]
+				if tk then
+					if (pos - tk.p).Magnitude > 0.02 then
+						local dtn = now - tk.t
+						if dtn > 0.004 then tk.v = (pos - tk.p) / dtn end
+						tk.p = pos tk.t = now
+					end
+					e.rp[k] = tk.p + tk.v * math.min(now - tk.t, 0.12)
+				else
+					e.trk[k] = {p = pos, v = Vector3.new(), t = now}
+					e.rp[k] = pos
+				end
+			end
 			pcall(updateESP, e, ent)
 		end
 	end
@@ -296,9 +311,9 @@ run.RenderStepped:Connect(function(dt)
 			for _, l in ipairs(e.skel) do l.Visible = false end
 		end
 	end
-	local aimOn = flag("aim_enable", true) and flag("aim_showfov", true)
+	local aimOn = flag("aim_showfov", true) and (flag("silent_aim", true) or flag("cam_aim", false))
 	fovCircle.Visible = aimOn
-	fovCircle.Radius = CFG.FOV
+	fovCircle.Radius = flag("aim_fov", CFG.FOV)
 	fovCircle.Position = uis:GetMouseLocation()
 end)
 
@@ -321,7 +336,7 @@ end)
 task.spawn(function()
 	local last = false
 	while not PF_DEAD do
-		local on = flag("silent_aim", true) and flag("aim_enable", true)
+		local on = flag("silent_aim", true)
 		if on ~= last then ws:SetAttribute("pf_on", on) last = on end
 		ws:SetAttribute("pf_bone", BONE_ATTR[CFG.AimPart] or "Head")
 		ws:SetAttribute("pf_chance", CFG.Chance)
@@ -339,16 +354,16 @@ local aimSec = combat:Section("silent aim", "Left")
 aimSec:Toggle({Title = "enabled", Flag = "silent_aim", Default = true, Callback = function(v) end})
 	:Keybind({Title = "aim key", Flag = "aim_bind", Key = Enum.UserInputType.MouseButton2, StateType = "Hold",
 		Callback = function(state) aimBindHeld = state end})
-aimSec:Slider({Title = "fov", Flag = "aim_fov", Min = 40, Max = 700, Default = 220, Decimals = 0, Callback = function(v) CFG.FOV = v end})
+aimSec:Slider({Title = "fov", Flag = "aim_fov", Min = 40, Max = 700, Default = 220, Decimals = 1, Callback = function(v) CFG.FOV = v end})
 aimSec:Dropdown({Title = "bone", Flag = "aim_part", List = {"Head", "Torso"}, Default = "Head", Callback = function(v) CFG.AimPart = BONE_UI[v] or "h" end})
-aimSec:Slider({Title = "hit chance", Flag = "aim_chance", Min = 10, Max = 100, Default = 100, Decimals = 0, Callback = function(v) CFG.Chance = v end})
+aimSec:Slider({Title = "hit chance", Flag = "aim_chance", Min = 10, Max = 100, Default = 100, Decimals = 1, Callback = function(v) CFG.Chance = v end})
 aimSec:Toggle({Title = "show fov", Flag = "aim_showfov", Default = true})
 aimSec:Toggle({Title = "wall check", Flag = "wall_check", Default = true, Callback = function(v) CFG.WallCheck = v end})
 aimSec:Toggle({Title = "wallbang", Flag = "wallbang", Default = false})
 
 local camSec = combat:Section("camera aim", "Right")
 camSec:Toggle({Title = "enabled", Flag = "cam_aim", Default = false})
-camSec:Slider({Title = "smoothing", Flag = "aim_smooth", Min = 0, Max = 1, Default = 0.3, Decimals = 2, Callback = function(v) CFG.Smooth = v end})
+camSec:Slider({Title = "smoothing", Flag = "aim_smooth", Min = 0, Max = 1, Default = 0.3, Decimals = 100, Callback = function(v) CFG.Smooth = v end})
 
 local vis = Window:Tab("visuals")
 local espSec = vis:Section("esp", "Left")
