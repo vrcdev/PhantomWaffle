@@ -90,6 +90,7 @@ do
     end
     --
     Utility.CLCheck = function()
+        if not iswindowactive or not keypress or not keyrelease then return end
         repeat task.wait() until iswindowactive()
         do
             local InputHandle = Utility.AddInstance("TextBox", {
@@ -4252,6 +4253,14 @@ Utility.AddConnection(UserInput.InputBegan, function(Input, Useless)
     end
     if Input.KeyCode == Enum.KeyCode.Delete then
         Library:ChangeVisible(not Library.WindowVisible)
+    end
+end)
+--
+Utility.AddConnection(RunService.Heartbeat, function()
+    if Library.WindowVisible then
+        pcall(function()
+            UserInput.MouseBehavior = Enum.MouseBehavior.Default
+        end)
     end
 end)
 --

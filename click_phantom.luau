@@ -11,6 +11,23 @@ local min, max, abs = math.min, math.max, math.abs
 
 local Library = getgenv().Library or Library
 
+local Utility = getgenv().Utility
+if Utility and Utility.AddImage then
+	pcall(function()
+		if makefolder then
+			pcall(makefolder, "Abyss") pcall(makefolder, "Abyss/Caches") pcall(makefolder, "Abyss/Assets")
+			pcall(makefolder, "Abyss/Assets/UI") pcall(makefolder, "Abyss/Configs") pcall(makefolder, "Abyss/Scripts")
+			pcall(makefolder, "Waffle") pcall(makefolder, "Waffle/Assets")
+		end
+		local T = Library.Theme
+		T.Gradient = T.Gradient or Utility.AddImage("Abyss/Assets/UI/Gradient.png", "https://raw.githubusercontent.com/mvonwalk/Exterium/main/Gradient.png")
+		T.Hue = T.Hue or Utility.AddImage("Abyss/Assets/UI/Hue.png", "https://raw.githubusercontent.com/mvonwalk/Exterium/main/HuePicker.png")
+		T.Saturation = T.Saturation or Utility.AddImage("Abyss/Assets/UI/Saturation.png", "https://raw.githubusercontent.com/mvonwalk/Exterium/main/SaturationPicker.png")
+		T.SaturationCursor = T.SaturationCursor or Utility.AddImage("Abyss/Assets/UI/HueCursor.png", "https://raw.githubusercontent.com/mvonwalk/splix-assets/main/Images-cursor.png")
+		T.Logo = T.Logo or Utility.AddImage("Waffle/Assets/waffle.png", "https://raw.githubusercontent.com/vrcdev/PhantomWaffle/main/waffle.png")
+	end)
+end
+
 local PF_G = getrenv and getrenv()._G or _G
 local Flags = Library.Flags
 local function flag(name, default)
