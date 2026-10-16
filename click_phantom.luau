@@ -87,8 +87,9 @@ local function scanEnts()
 			end
 		end
 	end
-	for name in pairs(ents) do
-		if not now[name] and not (wsPlayers and wsPlayers:FindFirstChild(name)) then ents[name] = nil end
+	local clock = os.clock()
+	for name, cur in pairs(ents) do
+		if not now[name] and clock - (cur.lastSeen or 0) > 2 then ents[name] = nil end
 	end
 	for name, e in pairs(now) do
 		local cur = ents[name]
@@ -151,6 +152,7 @@ local function updateESP(e, ent)
 	local parts = e.rp or ent.parts
 	local show = flag("esp_master", true) and ent.alive and not ent.mine and parts.c
 	if not show then hideAll() return end
+	if ent.team == nil then hideAll() return end
 	if flag("team_check", true) and ent.team == true then hideAll() return end
 	local col = ent.team == true and colFriend or colEnemy
 
@@ -288,8 +290,13 @@ run.RenderStepped:Connect(function(dt)
 			local ent = ents[name]
 			if not ent then
 				local plr = players:FindFirstChild(name)
-				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr ~= nil and teamEq(plr.Team, lp.Team)}
+				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr and teamEq(plr.Team, lp.Team)}
 				ents[name] = ent
+			end
+			ent.lastSeen = now
+			if ent.team == nil then
+				local plr = players:FindFirstChild(name)
+				if plr then ent.team = teamEq(plr.Team, lp.Team) end
 			end
 			local live = liveParts(name)
 			if live then ent.parts = live end
@@ -366,6 +373,7 @@ task.spawn(function()
 	end
 end)
 
+local Controls = {}
 local Window = Library.Window("waffle // phantom", vec2(540, 620))
 Window.Watermark("waffle")
 pcall(function() Window.ChangeAnime("Astolfo") end)
@@ -373,37 +381,38 @@ Window.ToggleAnime(false)
 
 local combat = Window:Tab("combat")
 local aimSec = combat:Section("silent aim", "Left")
-aimSec:Toggle({Title = "enabled", Flag = "silent_aim", Default = true, Callback = function(v) end})
-	:Keybind({Title = "aim key", Flag = "aim_bind", Key = Enum.UserInputType.MouseButton2, StateType = "Hold",
+local silentTgl = aimSec:Toggle({Title = "enabled", Flag = "silent_aim", Default = true, Callback = function(v) end})
+Controls.silent_aim = silentTgl
+silentTgl:Keybind({Title = "aim key", Flag = "aim_bind", Key = Enum.UserInputType.MouseButton2, StateType = "Hold",
 		Callback = function(state) aimBindHeld = state end})
-aimSec:Slider({Title = "fov", Flag = "aim_fov", Min = 40, Max = 700, Default = 220, Decimals = 1, Callback = function(v) CFG.FOV = v end})
-aimSec:Dropdown({Title = "bone", Flag = "aim_part", List = {"Head", "Torso"}, Default = "Head", Callback = function(v) CFG.AimPart = BONE_UI[v] or "h" end})
-aimSec:Slider({Title = "hit chance", Flag = "aim_chance", Min = 10, Max = 100, Default = 100, Decimals = 1, Callback = function(v) CFG.Chance = v end})
-aimSec:Toggle({Title = "show fov", Flag = "aim_showfov", Default = true})
-aimSec:Toggle({Title = "wall check", Flag = "wall_check", Default = true, Callback = function(v) CFG.WallCheck = v end})
-aimSec:Toggle({Title = "wallbang", Flag = "wallbang", Default = false})
+Controls.aim_fov = aimSec:Slider({Title = "fov", Flag = "aim_fov", Min = 40, Max = 700, Default = 220, Decimals = 1, Callback = function(v) CFG.FOV = v end})
+Controls.aim_part = aimSec:Dropdown({Title = "bone", Flag = "aim_part", List = {"Head", "Torso"}, Default = "Head", Callback = function(v) CFG.AimPart = BONE_UI[v] or "h" end})
+Controls.aim_chance = aimSec:Slider({Title = "hit chance", Flag = "aim_chance", Min = 10, Max = 100, Default = 100, Decimals = 1, Callback = function(v) CFG.Chance = v end})
+Controls.aim_showfov = aimSec:Toggle({Title = "show fov", Flag = "aim_showfov", Default = true})
+Controls.wall_check = aimSec:Toggle({Title = "wall check", Flag = "wall_check", Default = true, Callback = function(v) CFG.WallCheck = v end})
+Controls.wallbang = aimSec:Toggle({Title = "wallbang", Flag = "wallbang", Default = false})
 
 local camSec = combat:Section("camera aim", "Right")
-camSec:Toggle({Title = "enabled", Flag = "cam_aim", Default = false})
-camSec:Slider({Title = "smoothing", Flag = "aim_smooth", Min = 0, Max = 1, Default = 0.3, Decimals = 100, Callback = function(v) CFG.Smooth = v end})
+Controls.cam_aim = camSec:Toggle({Title = "enabled", Flag = "cam_aim", Default = false})
+Controls.aim_smooth = camSec:Slider({Title = "smoothing", Flag = "aim_smooth", Min = 0, Max = 1, Default = 0.3, Decimals = 100, Callback = function(v) CFG.Smooth = v end})
 
 local vis = Window:Tab("visuals")
 local espSec = vis:Section("esp", "Left")
-espSec:Toggle({Title = "master", Flag = "esp_master", Default = true})
-espSec:Toggle({Title = "boxes", Flag = "esp_boxes", Default = true})
-espSec:Toggle({Title = "names", Flag = "esp_names", Default = true})
-espSec:Toggle({Title = "distance", Flag = "esp_dist", Default = true})
-espSec:Toggle({Title = "skeleton", Flag = "esp_skel", Default = true})
-espSec:Toggle({Title = "tracers", Flag = "esp_tracers", Default = true})
-espSec:Toggle({Title = "offscreen arrows", Flag = "esp_arrows", Default = true})
-espSec:Toggle({Title = "team check", Flag = "team_check", Default = true})
+Controls.esp_master = espSec:Toggle({Title = "master", Flag = "esp_master", Default = true})
+Controls.esp_boxes = espSec:Toggle({Title = "boxes", Flag = "esp_boxes", Default = true})
+Controls.esp_names = espSec:Toggle({Title = "names", Flag = "esp_names", Default = true})
+Controls.esp_dist = espSec:Toggle({Title = "distance", Flag = "esp_dist", Default = true})
+Controls.esp_skel = espSec:Toggle({Title = "skeleton", Flag = "esp_skel", Default = true})
+Controls.esp_tracers = espSec:Toggle({Title = "tracers", Flag = "esp_tracers", Default = true})
+Controls.esp_arrows = espSec:Toggle({Title = "offscreen arrows", Flag = "esp_arrows", Default = true})
+Controls.team_check = espSec:Toggle({Title = "team check", Flag = "team_check", Default = true})
 local colSec = vis:Section("colors", "Right")
-colSec:Colorpicker({Title = "enemy", Flag = "col_enemy", Color = colEnemy, Callback = function(v) colEnemy = v end})
-colSec:Colorpicker({Title = "friend", Flag = "col_friend", Color = colFriend, Callback = function(v) colFriend = v end})
+Controls.col_enemy = colSec:Colorpicker({Title = "enemy", Flag = "col_enemy", Color = colEnemy, Callback = function(v) colEnemy = v end})
+Controls.col_friend = colSec:Colorpicker({Title = "friend", Flag = "col_friend", Color = colFriend, Callback = function(v) colFriend = v end})
 
 local misc = Window:Tab("misc")
 local miscSec = misc:Section("gameplay", "Left")
-miscSec:Toggle({Title = "no fall damage", Flag = "nofall", Default = false})
+Controls.nofall = miscSec:Toggle({Title = "no fall damage", Flag = "nofall", Default = false})
 
 local function cfgPath()
 	local s = flag("cfg_slot", "default")
@@ -420,22 +429,37 @@ local function saveCfg()
 		if writefile then writefile(cfgPath(), http_service:JSONEncode(out)) end
 	end)
 end
+local function flagColor(name, fallback)
+	local v = Flags[name]
+	if typeof(v) == "Color3" then return v end
+	if type(v) == "string" and v:sub(1, 1) == "#" then return Color3.fromHex(v) end
+	return fallback
+end
 local function loadCfg()
 	pcall(function()
 		local path = cfgPath()
 		if not (isfile and isfile(path)) then return end
 		local cfg = http_service:JSONDecode(readfile(path))
 		for k, v in pairs(cfg) do
-			if type(v) == "table" and v.__col then Flags[k] = Color3.fromHex(v.__col)
-			elseif type(v) ~= "table" then Flags[k] = v end
+			local ctl = Controls[k]
+			if type(v) == "table" and v.__col then v = v.__col end
+			if type(v) == "string" and v:sub(1, 1) == "#" and ctl and ctl.SetHue then
+				local c = Color3.fromHex(v)
+				local h, s, vv = c:ToHSV()
+				pcall(function() ctl:SetHue(h) ctl:SetSaturationX(s) ctl:SetSaturationY(vv) end)
+				Flags[k] = v
+			elseif k ~= "aim_bind" and type(v) ~= "table" then
+				if ctl and ctl.Set then pcall(function() ctl:Set(v) end)
+				else Flags[k] = v end
+			end
 		end
 		CFG.FOV = flag("aim_fov", 220)
 		CFG.AimPart = BONE_UI[flag("aim_part", "Head")] or "h"
 		CFG.Chance = flag("aim_chance", 100)
 		CFG.Smooth = flag("aim_smooth", 0.3)
 		CFG.WallCheck = flag("wall_check", true)
-		colEnemy = flag("col_enemy", colEnemy)
-		colFriend = flag("col_friend", colFriend)
+		colEnemy = flagColor("col_enemy", colEnemy)
+		colFriend = flagColor("col_friend", colFriend)
 	end)
 end
 local function pfUnload()
@@ -462,7 +486,7 @@ end)
 
 local settingsTab = Window:AddSettingsTab(pfUnload)
 local cfgSec = settingsTab:Section("config", "Right")
-cfgSec:Dropdown({Title = "slot", Flag = "cfg_slot", List = {"default", "slot 2", "slot 3"}, Default = "default"})
+Controls.cfg_slot = cfgSec:Dropdown({Title = "slot", Flag = "cfg_slot", List = {"default", "slot 2", "slot 3"}, Default = "default"})
 cfgSec:Button({Title = "save config", Callback = saveCfg})
 cfgSec:Button({Title = "load config", Callback = loadCfg})
 cfgSec:Button({Title = "unload", Callback = pfUnload})
