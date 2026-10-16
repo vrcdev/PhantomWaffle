@@ -57,6 +57,12 @@ local function getTrajectory(direction, speed)
 	return (direction / root + 0.5 * gravity * root).Unit
 end
 
+local function teamEq(a, b)
+	if a == b then return true end
+	if a == nil or b == nil then return false end
+	return tostring(a) == tostring(b)
+end
+
 local function findEntry(name)
 	local found
 	local ok = pcall(function()
@@ -130,7 +136,7 @@ task.spawn(function()
 				pcall(function() alive = entry:isAlive() end)
 				pcall(function() tpo = entry:getThirdPersonObject() end)
 				ws:SetAttribute(pre .. 'a', alive == true)
-				ws:SetAttribute(pre .. 'team', player.Team == lp.Team)
+				ws:SetAttribute(pre .. 'team', teamEq(player.Team, lp.Team))
 				ws:SetAttribute(pre .. 'mine', player == lp)
 				if tpo then
 					for i, bn in ipairs(BONES) do

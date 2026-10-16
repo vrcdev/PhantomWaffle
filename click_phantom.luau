@@ -40,6 +40,11 @@ local function flag(name, default)
 	if v == nil then return default end
 	return v
 end
+local function teamEq(a, b)
+	if a == b then return true end
+	if a == nil or b == nil then return false end
+	return tostring(a) == tostring(b)
+end
 local CFG = {FOV = 220, Smooth = 0.3, WallCheck = true, AimPart = "h", Chance = 100}
 
 local PF_SKEL = {{"h","c"},{"c","la"},{"c","ra"},{"c","ll"},{"c","rl"}}
@@ -82,7 +87,20 @@ local function scanEnts()
 			end
 		end
 	end
-	ents = now
+	for name in pairs(ents) do
+		if not now[name] and not (wsPlayers and wsPlayers:FindFirstChild(name)) then ents[name] = nil end
+	end
+	for name, e in pairs(now) do
+		local cur = ents[name]
+		if cur then
+			if e.alive ~= nil then cur.alive = e.alive end
+			if e.team ~= nil then cur.team = e.team end
+			if e.mine ~= nil then cur.mine = e.mine end
+			for k, v in pairs(e.parts) do cur.parts[k] = v end
+		else
+			ents[name] = e
+		end
+	end
 end
 
 local function w2s(v3)
@@ -270,7 +288,7 @@ run.RenderStepped:Connect(function(dt)
 			local ent = ents[name]
 			if not ent then
 				local plr = players:FindFirstChild(name)
-				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr ~= nil and plr.Team == lp.Team}
+				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr ~= nil and teamEq(plr.Team, lp.Team)}
 				ents[name] = ent
 			end
 			local live = liveParts(name)
