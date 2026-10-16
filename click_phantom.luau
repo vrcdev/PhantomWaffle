@@ -116,7 +116,6 @@ local espPool = {}
 
 local colEnemy = rgb(255, 60, 60)
 local colFriend = rgb(80, 200, 255)
-local myTeam = nil
 
 local function updateESP(e, ent)
 	local camera = ws.CurrentCamera
@@ -129,8 +128,8 @@ local function updateESP(e, ent)
 	local parts = e.rp or ent.parts
 	local show = flag("esp_master", true) and ent.alive and not ent.mine and parts.c
 	if not show then hideAll() return end
-	local isEn = not flag("team_check", true) or ent.team ~= myTeam or myTeam == nil
-	local col = isEn and colEnemy or colFriend
+	if flag("team_check", true) and ent.team == true then hideAll() return end
+	local col = ent.team == true and colFriend or colEnemy
 
 	local cPos = parts.c
 	local camDist = (camera.CFrame.Position - cPos).Magnitude
@@ -216,7 +215,7 @@ local function pickTarget()
 	local cam = ws.CurrentCamera
 	local best, bestScore = nil, flag("aim_fov", CFG.FOV)
 	for _, ent in pairs(ents) do
-		if ent.alive and not ent.mine and (not flag("team_check", true) or ent.team ~= myTeam or myTeam == nil) then
+		if ent.alive and not ent.mine and not (flag("team_check", true) and ent.team == true) then
 			local pp = ent.parts[CFG.AimPart] or ent.parts.h or ent.parts.c
 			if pp then
 				local sp, on = w2s(pp)
@@ -240,7 +239,6 @@ fovCircle.Filled = false fovCircle.Visible = false
 
 task.spawn(function()
 	while not PF_DEAD do
-		myTeam = tostring(lp.TeamColor)
 		scanEnts()
 		local t = pickTarget()
 		if t and t.parts then
@@ -267,7 +265,7 @@ run.RenderStepped:Connect(function(dt)
 			local ent = ents[name]
 			if not ent then
 				local plr = players:FindFirstChild(name)
-				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr and tostring(plr.TeamColor) or ''}
+				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr ~= nil and plr.Team == lp.Team}
 				ents[name] = ent
 			end
 			local live = liveParts(name)
@@ -382,8 +380,11 @@ colSec:Colorpicker({Title = "friend", Flag = "col_friend", Color = colFriend, Ca
 local misc = Window:Tab("misc")
 local miscSec = misc:Section("gameplay", "Left")
 miscSec:Toggle({Title = "no fall damage", Flag = "nofall", Default = false})
-local cfgSec = misc:Section("config", "Right")
 
+local function cfgPath()
+	local s = flag("cfg_slot", "default")
+	return s == "default" and "pf_cfg.json" or "pf_cfg_" .. s:gsub("%s+", "_") .. ".json"
+end
 local function saveCfg()
 	pcall(function()
 		local out = {}
@@ -392,13 +393,14 @@ local function saveCfg()
 			elseif typeof(v) == "EnumItem" then out[k] = {__enum = tostring(v)}
 			else out[k] = v end
 		end
-		if writefile then writefile("pf_cfg.json", http_service:JSONEncode(out)) end
+		if writefile then writefile(cfgPath(), http_service:JSONEncode(out)) end
 	end)
 end
 local function loadCfg()
 	pcall(function()
-		if not (isfile and isfile("pf_cfg.json")) then return end
-		local cfg = http_service:JSONDecode(readfile("pf_cfg.json"))
+		local path = cfgPath()
+		if not (isfile and isfile(path)) then return end
+		local cfg = http_service:JSONDecode(readfile(path))
 		for k, v in pairs(cfg) do
 			if type(v) == "table" and v.__col then Flags[k] = Color3.fromHex(v.__col)
 			elseif type(v) ~= "table" then Flags[k] = v end
@@ -430,15 +432,16 @@ local function pfUnload()
 end
 PF_G.__pfUnload = pfUnload
 
-cfgSec:Button({Title = "save config", Callback = saveCfg})
-cfgSec:Button({Title = "load config", Callback = loadCfg})
-cfgSec:Button({Title = "unload", Callback = pfUnload})
-
 uis.InputBegan:Connect(function(input, gpe)
 	if input.KeyCode == Enum.KeyCode.End then pfUnload() end
 end)
 
-Window:AddSettingsTab()
+local settingsTab = Window:AddSettingsTab(pfUnload)
+local cfgSec = settingsTab:Section("config", "Right")
+cfgSec:Dropdown({Title = "slot", Flag = "cfg_slot", List = {"default", "slot 2", "slot 3"}, Default = "default"})
+cfgSec:Button({Title = "save config", Callback = saveCfg})
+cfgSec:Button({Title = "load config", Callback = loadCfg})
+cfgSec:Button({Title = "unload", Callback = pfUnload})
 Window:SwitchTab(combat)
 loadCfg()
 print('[pf] main payload up')

@@ -130,7 +130,7 @@ task.spawn(function()
 				pcall(function() alive = entry:isAlive() end)
 				pcall(function() tpo = entry:getThirdPersonObject() end)
 				ws:SetAttribute(pre .. 'a', alive == true)
-				ws:SetAttribute(pre .. 'team', tostring(player.TeamColor))
+				ws:SetAttribute(pre .. 'team', player.Team == lp.Team)
 				ws:SetAttribute(pre .. 'mine', player == lp)
 				if tpo then
 					for i, bn in ipairs(BONES) do
