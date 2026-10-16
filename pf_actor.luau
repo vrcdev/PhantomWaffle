@@ -119,8 +119,7 @@ task.spawn(function()
 	local seen = {}
 	while true do
 		local now = {}
-		local myTeam = lp and lp.Team and lp.Team.Name
-		if myTeam then ws:SetAttribute('pf_myteam', myTeam) end
+		ws:SetAttribute('pf_myteam', tostring(lp.TeamColor))
 		pcall(function()
 			replicationInterface.operateOnAllEntries(function(player, entry)
 				if not (player and player.Name) then return end
@@ -131,7 +130,7 @@ task.spawn(function()
 				pcall(function() alive = entry:isAlive() end)
 				pcall(function() tpo = entry:getThirdPersonObject() end)
 				ws:SetAttribute(pre .. 'a', alive == true)
-				ws:SetAttribute(pre .. 'team', player.Team and player.Team.Name or '')
+				ws:SetAttribute(pre .. 'team', tostring(player.TeamColor))
 				ws:SetAttribute(pre .. 'mine', player == lp)
 				if tpo then
 					for i, bn in ipairs(BONES) do

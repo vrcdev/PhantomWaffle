@@ -240,7 +240,7 @@ fovCircle.Filled = false fovCircle.Visible = false
 
 task.spawn(function()
 	while not PF_DEAD do
-		myTeam = ws:GetAttribute("pf_myteam")
+		myTeam = tostring(lp.TeamColor)
 		scanEnts()
 		local t = pickTarget()
 		if t and t.parts then
@@ -267,7 +267,7 @@ run.RenderStepped:Connect(function(dt)
 			local ent = ents[name]
 			if not ent then
 				local plr = players:FindFirstChild(name)
-				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr and plr.Team and plr.Team.Name or ''}
+				ent = {name = name, parts = {}, alive = true, mine = plr == lp, team = plr and tostring(plr.TeamColor) or ''}
 				ents[name] = ent
 			end
 			local live = liveParts(name)
