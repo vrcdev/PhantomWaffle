@@ -58,8 +58,8 @@ local function getTrajectory(direction, speed)
 end
 
 local function teamEq(a, b)
-	if a == b then return true end
 	if a == nil or b == nil then return false end
+	if a == b then return true end
 	return tostring(a) == tostring(b)
 end
 

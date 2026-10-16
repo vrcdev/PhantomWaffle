@@ -41,8 +41,8 @@ local function flag(name, default)
 	return v
 end
 local function teamEq(a, b)
-	if a == b then return true end
 	if a == nil or b == nil then return false end
+	if a == b then return true end
 	return tostring(a) == tostring(b)
 end
 local CFG = {FOV = 220, Smooth = 0.3, WallCheck = true, AimPart = "h", Chance = 100}
@@ -152,7 +152,6 @@ local function updateESP(e, ent)
 	local parts = e.rp or ent.parts
 	local show = flag("esp_master", true) and ent.alive and not ent.mine and parts.c
 	if not show then hideAll() return end
-	if ent.team == nil then hideAll() return end
 	if flag("team_check", true) and ent.team == true then hideAll() return end
 	local col = ent.team == true and colFriend or colEnemy
 
